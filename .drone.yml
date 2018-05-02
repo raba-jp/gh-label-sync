@@ -1,0 +1,10 @@
+pipeline:
+  run:
+    image: python:3.6-alpine
+    commands:
+      - apk add --update git
+      - pip install git+https://github.com/vivitInc/github-label-sync.git
+      - github-label-sync sync
+    secrets:
+      - GITHUB_TOKEN
+branches: master

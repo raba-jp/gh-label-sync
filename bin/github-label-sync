@@ -1,0 +1,5 @@
+#!/usr/bin/python
+from cli.main import CLI
+import fire
+
+fire.Fire(CLI)
