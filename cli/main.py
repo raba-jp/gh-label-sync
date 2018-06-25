@@ -17,18 +17,20 @@ class CLI(object):
             raise SystemExit(1)
         self.__github = Github(token)
 
-    def sync(self, filepath='config.yaml'):
+    def sync(self, filepath='config.yaml', run=False):
         config = Config(filepath, self.__github)
 
         repositories = config.repositories()
 
         print('In sync...')
+        if not run:
+            print('======= Dry Run Mode =======')
         for repository in repositories:
             print(repository.full_name)
-            self.__sync_label(repository, config.labels())
+            self.__sync_label(repository, config.labels(), run)
         print('Complete!!')
 
-    def __sync_label(self, repository, labels):
+    def __sync_label(self, repository, labels, run):
         current = list(map(lambda l: l.name, repository.get_labels()))
         new = list(map(lambda l: l.name, labels))
 
@@ -36,13 +38,15 @@ class CLI(object):
         deletion_labels = list(filter(lambda l: l.name in deletion_names, repository.get_labels()))
         for label in deletion_labels:
             print('  Delete: `' + label.name + '`')
-            label.delete()
+            if run:
+                label.delete()
 
         creation_names = list(set(new) - set(current))
         creation_labels = list(filter(lambda l: l.name in creation_names, labels))
         for label in creation_labels:
             print('  Create: `' + label.name + '`')
-            repository.create_label(label.name, label.color, label.description)
+            if run:
+                repository.create_label(label.name, label.color, label.description)
 
 class Config(object):
     def __init__(self, filepath, github):
