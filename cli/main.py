@@ -1,6 +1,7 @@
 import os
 import fire
 import yaml
+from itertools import chain
 from github import Github
 
 def find(iterable, default, pred):
@@ -16,59 +17,69 @@ class CLI(object):
             raise SystemExit(1)
         self.__github = Github(token)
 
-    def sync(self, filepath='config.yaml', mode='namespace'):
+    def sync(self, filepath='config.yaml'):
         config = Config(filepath, self.__github)
 
-        if mode == 'namespace':
-            repositories = config.repositories_from_namespace()
-        else:
-            repositories = config.repositories_from_list()
+        repositories = config.repositories()
 
         print('In sync...')
         for repository in repositories:
-            print('  ' + repository.full_name)
+            print(repository.full_name)
             self.__sync_label(repository, config.labels())
         print('Complete!!')
 
     def __sync_label(self, repository, labels):
         current = list(map(lambda l: l.name, repository.get_labels()))
         new = list(map(lambda l: l.name, labels))
-        deletion_labels = list(set(current) - set(new))
-        creation_labels = list(set(new) - set(current))
 
-        for target in deletion_labels:
-            label = find(repository.get_labels(), None, lambda l: l.name == target)
-            if label is None:
-                continue
-            print('Delete: ' + label.name)
+        deletion_names = list(set(current) - set(new))
+        deletion_labels = list(filter(lambda l: l.name in deletion_names, repository.get_labels()))
+        for label in deletion_labels:
+            print('  Delete: `' + label.name + '`')
             label.delete()
-        for target in creation_labels:
-            label = find(labels, None, lambda l: l.name == target)
-            if label is None:
-                continue
-            print('Create: ' + label.name)
-            repository.create_label(label.name, label.color, label.description)
 
+        creation_names = list(set(new) - set(current))
+        creation_labels = list(filter(lambda l: l.name in creation_names, labels))
+        for label in creation_labels:
+            print('  Create: `' + label.name + '`')
+            repository.create_label(label.name, label.color, label.description)
 
 class Config(object):
     def __init__(self, filepath, github):
         self.__data = yaml.load(open(filepath, 'r+'))
         self.__github = github
+        self.__labels = None
+        self.__repositories = None
 
     def labels(self):
-        return list(map(lambda l: Label(l), self.__data['labels']))
+        if self.__labels is None:
+            self.__labels = list(map(lambda l: Label(l), self.__data['labels']))
+        return self.__labels
 
-    def repositories_from_namespace(self):
-        is_user = self.__data['is_user']
-        namespace = self.__data['namespace']
-        if is_user:
-            repos = list(filter(lambda r: r.owner.login == namespace, self.__github.get_user().get_repos()))
-        else:
-            repos = list(self.__github.get_organization(namespace).get_repos())
-        return repos
+    def repositories(self):
+        return list(chain(self.__get_user_repos(), self.__get_organizations_repos()))
 
-    def repositories_from_list(self):
-        return list(map(lambda r: self.__github.get_repo(r), self.__data['repositories']))
+    def __get_user_repos(self):
+        try:
+            state = self.__data['user']
+        except KeyError:
+            return []
+        if not state:
+            return []
+
+        repos = self.__github.get_user().get_repos()
+        user_name = self.__github.get_user().login
+        return list(filter(lambda r: r.owner.login == user_name, repos))
+
+    def __get_organizations_repos(self):
+        try:
+            orgs = self.__data['organizations']
+        except KeyError:
+            return []
+        if orgs is None:
+            return []
+        expr = map(lambda o: self.__github.get_organization(o).get_repos(), orgs)
+        return list(chain.from_iterable(expr))
 
 class Label(object):
     def __init__(self, data):
@@ -79,7 +90,6 @@ class Label(object):
         except KeyError:
             print('Invalid label.')
             SystemExit(1)
-
 
 if __name__ == '__main__':
     fire.Fire(CLI)

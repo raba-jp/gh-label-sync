@@ -1,7 +1,7 @@
 ---
-namespace: vivitInc
-is_user: false
-repositories: []
+organizations:
+  - vivitInc
+user: false
 labels:
   - name: 'Status: Abandoned'
     color: '888084'
