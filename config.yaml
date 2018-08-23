@@ -1,7 +1,7 @@
 ---
+user: false
 organizations:
   - vivitInc
-user: false
 labels:
   - name: 'Don''t Merge'
     description: 'DON''T MERGE!!'

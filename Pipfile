@@ -9,6 +9,11 @@ pygithub = "*"
 pyyaml = "*"
 
 [dev-packages]
+pylint = "*"
+"flake8" = "*"
+yapf = "*"
+mypy = "*"
+jedi = "*"
 
 [requires]
-python_version = "3.6"
+python_version = "3.7"
