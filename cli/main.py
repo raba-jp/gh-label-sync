@@ -14,7 +14,7 @@ class Label(object):
     def __init__(self, data: Dict) -> None:
         self.name = data.get('name')
         self.color = data.get('color')
-        self.description = data.get('descrioption')
+        self.description = data.get('description')
 
 
 def load_config(filepath: str) -> Dict:
@@ -69,7 +69,7 @@ def create_labels(current: List[github.Label.Label], expected: List[Label],
         return [l for l in expected if l.name in names]
 
     for l in __creation_plan(current, expected):
-        print('  Create: `' + l.name + '`')
+        print('  Create `' + l.name + '`')
         if run:
             repo.create_label(l.name, l.color, l.description)
 
@@ -84,23 +84,24 @@ def delete_labels(current: List[github.Label.Label], expected: List[Label],
         return [l for l in current if l.name in names]
 
     for l in __deletion_plan(current, expected):
-        print('  Delete: `' + l.name + '`')
+        print('  Delete `' + l.name + '`')
         if run:
             l.delete()
 
 
-def edit_labels() -> None:
-    def __edition_plan(current: List[github.Label.Label],
-                       expected: List[Label]) -> List[github.Label.Label]:
-        # TODO not implemented
-        return []
-
-    # TODO not implemented
-    pass
+def edit_labels(current: List[github.Label.Label], expected: List[Label],
+                run: bool) -> None:
+    for c in current:
+        for e in expected:
+            if c.name != e.name:
+                continue
+            print('  Edit `' + e.name + '`')
+            if run:
+                c.edit(e.name, e.color, e.description)
 
 
 def sync(filepath='config.yaml', run=False):
-    print('In sync...')
+    print('======= In sync... =======')
     if not run:
         print('======= Dry Run Mode =======')
 
@@ -109,11 +110,11 @@ def sync(filepath='config.yaml', run=False):
         print(repo.full_name)
         current: List[github.Label] = repo.get_labels()
         expected: List[Label] = expected_labels(config.get('labels'))
-
         delete_labels(current, expected, run)
         create_labels(current, expected, repo, run)
+        edit_labels(current, expected, run)
 
-    print('Complete!!')
+    print('======= Complete!! =======')
 
 
 if __name__ == '__main__':
